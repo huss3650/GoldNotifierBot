@@ -1,15 +1,11 @@
-from config import BOT_TOKEN
-from keep_alive import keep_alive
-import requests
-import time
-import telebot
 import os
+import time
+import requests
+import telebot
+from keep_alive import keep_alive
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "أهلًا بك! سأقوم بإرسال أسعار الذهب يوميًا إن شاء الله.")
 
 def get_gold_price():
     url = os.getenv("GOLD_API_URL")
@@ -20,15 +16,35 @@ def get_gold_price():
     exchange_rate = float(os.getenv("EXCHANGE_RATE", 1))
     return round(price * exchange_rate, 2)
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    chat_id = message.chat.id
+
+    # تخزين الـ chat_id
+    with open("chat_id.txt", "w") as f:
+        f.write(str(chat_id))
+
+    # رسالة ترحيبية وفكرة البوت
+    welcome_msg = (
+        "مرحباً بك في بوت أسعار الذهب 💰\n\n"
+        "📌 فكرة البوت:\n"
+        "نرسل لك مرتين يوميًا *سعر الذهب بالريال القطري* بناءً على سعر السوق العالمي محدث بالدولار.\n\n"
+        "✅ لا تحتاج لعمل أي شيء، فقط انتظر الرسائل التلقائية.\n"
+        "🟢 تم تسجيلك بنجاح لاستلام التحديثات.\n"
+    )
+    bot.reply_to(message, welcome_msg, parse_mode="Markdown")
+
 def send_daily_price():
     while True:
         try:
+            with open("chat_id.txt", "r") as f:
+                chat_id = f.read().strip()
             price = get_gold_price()
-            message = f"🔔 سعر الذهب اليوم هو: {price} ريال قطري للغرام."
-            bot.send_message(chat_id='@GoldNotifierPrice_Channel', text=message)
+            msg = f"📈 سعر الذهب الحالي هو: {price} ريال قطري للغرام."
+            bot.send_message(chat_id=chat_id, text=msg)
             time.sleep(43200)  # كل 12 ساعة
         except Exception as e:
-            print(f"Error: {e}")
+            print("Error:", e)
             time.sleep(60)
 
 keep_alive()
